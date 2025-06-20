@@ -1,0 +1,164 @@
+{
+  "name": "ChatGPT Google Drive Report",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "file-process",
+        "method": "POST"
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{$json[\"fileUrl\"]}}",
+        "options": {
+          "headers": {
+            "Authorization": "Bearer {{ $env.GDRIVE_TOKEN }}"
+          }
+        },
+        "responseFormat": "file"
+      },
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [250, 0]
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "data"
+      },
+      "name": "PDF Parse",
+      "type": "n8n-nodes-base.pdfExtract",
+      "typeVersion": 1,
+      "position": [500, 0]
+    },
+    {
+      "parameters": {
+        "chatCompletion": {
+          "model": "gpt-3.5-turbo",
+          "messages": [
+            {
+              "role": "system",
+              "content": "You analyze PDF contents and produce summary and structured data."
+            },
+            {
+              "role": "user",
+              "content": "={{$json[\"text\"]}}"
+            }
+          ]
+        }
+      },
+      "name": "ChatGPT",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [750, 0]
+    },
+    {
+      "parameters": {
+        "fileName": "report.xlsx",
+        "data": "={{$json}}"
+      },
+      "name": "Spreadsheet File",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 1,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "html": "<html><body><h1>Report</h1><p>{{ $json['summary'] }}</p></body></html>",
+        "options": {
+          "margin": "1cm"
+        }
+      },
+      "name": "PDF Generator",
+      "type": "n8n-nodes-base.htmlPdf",
+      "typeVersion": 1,
+      "position": [1250, 0]
+    },
+    {
+      "parameters": {
+        "dataPropertyName": "binary"
+      },
+      "name": "HTTP Response",
+      "type": "n8n-nodes-base.httpResponse",
+      "typeVersion": 1,
+      "position": [1500, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "PDF Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Parse": {
+      "main": [
+        [
+          {
+            "node": "ChatGPT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ChatGPT": {
+      "main": [
+        [
+          {
+            "node": "Spreadsheet File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Spreadsheet File": {
+      "main": [
+        [
+          {
+            "node": "PDF Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Generator": {
+      "main": [
+        [
+          {
+            "node": "HTTP Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "versionId": "1",
+  "settings": {},
+  "id": "1"
+}
+
